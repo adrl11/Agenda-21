@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    match /siswa/{nisn} {
+      allow read, write: if true;
+    }
+    match /jadwal/{jadwalId} {
+      allow read, write: if true;
+    }
+    match /agenda/{agendaId} {
+      allow read, write: if true;
+    }
+    match /penilaian/{nilaiId} {
+      allow read, write: if true;
+    }
+  }
+}

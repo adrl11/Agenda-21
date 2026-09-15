@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Firebase Schema Blueprint",
+  "description": "Schema definition for Agenda 21 SMP Negeri Firestore database",
+  "collections": {
+    "users": {
+      "description": "Daftar pengguna (Admin & Guru)",
+      "fields": {
+        "ID_User": { "type": "string", "description": "ID Pengguna" },
+        "NIP_Username": { "type": "string", "description": "NIP atau Username" },
+        "Nama_Lengkap": { "type": "string", "description": "Nama lengkap pengguna" },
+        "Password": { "type": "string", "description": "Password pengguna" },
+        "Role": { "type": "string", "description": "Role: Admin atau Guru" }
+      }
+    },
+    "siswa": {
+      "description": "Data master siswa",
+      "fields": {
+        "NISN": { "type": "string", "description": "Nomor Induk Siswa Nasional" },
+        "Nama_Siswa": { "type": "string", "description": "Nama lengkap siswa" },
+        "Kelas": { "type": "string", "description": "Kelas siswa (e.g. 7A, 8B)" },
+        "Jenis_Kelamin": { "type": "string", "description": "Jenis Kelamin: L atau P" }
+      }
+    },
+    "jadwal": {
+      "description": "Jadwal mengajar guru",
+      "fields": {
+        "ID_Jadwal": { "type": "string", "description": "ID Jadwal unik" },
+        "NIP_Guru": { "type": "string", "description": "NIP Guru pengampu" },
+        "Kelas": { "type": "string", "description": "Kelas pengajaran" },
+        "Mata_Pelajaran": { "type": "string", "description": "Nama mata pelajaran" },
+        "Hari": { "type": "string", "description": "Hari (Senin-Sabtu)" },
+        "Jam_Mulai": { "type": "string", "description": "Jam mulai format HH:mm" },
+        "Jam_Selesai": { "type": "string", "description": "Jam selesai format HH:mm" }
+      }
+    },
+    "agenda": {
+      "description": "Jurnal pembelajaran harian guru",
+      "fields": {
+        "ID_Agenda": { "type": "string", "description": "ID Agenda jurnal unik" },
+        "NIP_Guru": { "type": "string", "description": "NIP Guru yang mengisi" },
+        "Tanggal": { "type": "string", "description": "Tanggal mengajar YYYY-MM-DD" },
+        "Jam_Ke": { "type": "string", "description": "Jam pelajaran ke- (e.g. 1-2)" },
+        "Kelas": { "type": "string", "description": "Kelas yang diajar" },
+        "Mata_Pelajaran": { "type": "string", "description": "Mata pelajaran" },
+        "Materi_Pokok": { "type": "string", "description": "Topik atau materi pembelajaran" },
+        "Total_Hadir": { "type": "number", "description": "Jumlah siswa hadir" },
+        "Total_Siswa": { "type": "number", "description": "Jumlah total siswa kelas" },
+        "Status": { "type": "string", "description": "Status pelaksanaan (Terlaksana/Tertunda)" },
+        "Catatan_Refleksi": { "type": "string", "description": "Catatan refleksi atau kendala kelas" }
+      }
+    },
+    "penilaian": {
+      "description": "Catatan asesmen dan penilaian siswa",
+      "fields": {
+        "ID_Nilai": { "type": "string", "description": "ID Nilai unik" },
+        "NIP_Guru": { "type": "string", "description": "NIP Guru penilai" },
+        "NISN": { "type": "string", "description": "NISN siswa" },
+        "Tanggal": { "type": "string", "description": "Tanggal penilaian" },
+        "Mata_Pelajaran": { "type": "string", "description": "Mata pelajaran" },
+        "Kategori_Asesmen": { "type": "string", "description": "Formatif / Sumatif / Tugas / Kuis" },
+        "Nilai_Skor": { "type": "number", "description": "Nilai angka 0-100" },
+        "Catatan_Evaluasi": { "type": "string", "description": "Catatan evaluasi perkembangan siswa" }
+      }
+    }
+  }
+}

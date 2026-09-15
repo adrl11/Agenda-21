@@ -1,0 +1,8 @@
+{
+  "name": "Remix Agenda 21 - Manajemen Guru",
+  "description": "Aplikasi Manajemen Guru, Agenda Mengajar Harian, Penilaian Siswa, dan Master Data Sekolah berbasis PWA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
