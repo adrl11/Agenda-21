@@ -112,16 +112,6 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
               <Award className="w-4 h-4" />
               <span>Rekam Nilai Siswa</span>
             </button>
-            {onOpenSync && (
-              <button
-                onClick={onOpenSync}
-                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2.5 text-xs font-semibold shadow-md active:scale-95 transition cursor-pointer"
-                title="Kirim Jurnal & Nilai ke Google Sheet Sekolah"
-              >
-                <Database className="w-4 h-4" />
-                <span>Sinkronkan ke Sheet</span>
-              </button>
-            )}
           </div>
         </div>
 

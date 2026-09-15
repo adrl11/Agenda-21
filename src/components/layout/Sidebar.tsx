@@ -139,13 +139,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             setMobileOpen?.(false);
             onCloseMobile?.();
           }}
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs lg:hidden"
+          className="fixed inset-x-0 top-16 bottom-0 z-40 bg-slate-900/60 backdrop-blur-xs lg:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-slate-800 bg-[#0f172a] text-slate-200 transition-all duration-300 ease-in-out lg:static ${
+        className={`fixed top-16 bottom-0 left-0 z-40 flex flex-col border-r border-slate-800 bg-[#0f172a] text-slate-200 transition-all duration-300 ease-in-out lg:static lg:top-auto lg:bottom-auto lg:h-[calc(100vh-6.5rem)] lg:sticky lg:top-20 lg:rounded-2xl lg:border lg:border-slate-800 lg:self-start lg:shadow-md ${
           mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
         } ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}`}
       >

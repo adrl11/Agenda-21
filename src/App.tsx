@@ -229,7 +229,6 @@ export default function App() {
                 jadwalList={jadwalList}
                 siswaList={siswaList}
                 onNavigate={handleNavigate}
-                onOpenSync={() => setIsSyncModalOpen(true)}
               />
             ) : (
               <AdminDashboard
@@ -252,7 +251,6 @@ export default function App() {
               jadwalList={jadwalList}
               onRefresh={refreshAllData}
               prefillData={prefillAgenda}
-              onOpenSync={() => setIsSyncModalOpen(true)}
             />
           )}
 

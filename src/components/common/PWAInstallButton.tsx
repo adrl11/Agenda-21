@@ -9,8 +9,8 @@ export const PWAInstallButton: React.FC = () => {
 
   if (isInstalled) {
     return (
-      <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
-        <Check className="w-3.5 h-3.5" />
+      <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 text-xs font-medium">
+        <Check className="w-3.5 h-3.5 text-emerald-400" />
         <span>PWA Aktif</span>
       </div>
     );
@@ -30,7 +30,7 @@ export const PWAInstallButton: React.FC = () => {
       <button
         onClick={handleInstallClick}
         disabled={isInstalling}
-        className="flex items-center gap-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 text-xs sm:text-sm font-medium shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
+        className="flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer border border-blue-400/30"
         title="Instal aplikasi ke perangkat Anda"
       >
         <Download className="w-4 h-4" />
@@ -45,7 +45,7 @@ export const PWAInstallButton: React.FC = () => {
       <>
         <button
           onClick={() => setShowIOSGuide(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-3 py-1.5 text-xs font-medium hover:bg-blue-100 transition cursor-pointer"
+          className="flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-900/40 text-blue-200 px-3 py-1.5 text-xs font-medium hover:bg-blue-900/60 transition cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Pasang di iOS</span>

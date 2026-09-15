@@ -227,17 +227,6 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {onOpenSync && (
-            <button
-              onClick={onOpenSync}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer shadow-2xs"
-              title="Kirim Jurnal ke Google Spreadsheet Sekolah"
-            >
-              <Database className="w-4 h-4 text-emerald-700" />
-              <span>Sinkronkan ke Sheet</span>
-            </button>
-          )}
-
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition cursor-pointer shadow-2xs"
