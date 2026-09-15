@@ -1,6 +1,7 @@
 import { 
   collection, 
   getDocs, 
+  getDoc,
   doc, 
   setDoc, 
   deleteDoc, 
@@ -23,60 +24,68 @@ export const FirestoreService = {
       const penilaian = StorageService.getPenilaian();
       const kopSurat = StorageService.getKopSurat();
 
-      const batch = writeBatch(db);
-      let count = 0;
+      // Collect all operations to commit in safe chunks of 400
+      type BatchOp = (b: ReturnType<typeof writeBatch>) => void;
+      const operations: BatchOp[] = [];
 
-      // Users
       users.forEach(u => {
-        const docRef = doc(db, 'users', u.ID_User || u.NIP_Username);
-        batch.set(docRef, u, { merge: true });
-        count++;
+        operations.push(b => {
+          const docRef = doc(db, 'users', u.ID_User || u.NIP_Username);
+          b.set(docRef, u, { merge: true });
+        });
       });
 
-      // Siswa
       siswa.forEach(s => {
-        const docRef = doc(db, 'siswa', s.NISN);
-        batch.set(docRef, s, { merge: true });
-        count++;
+        operations.push(b => {
+          const docRef = doc(db, 'siswa', s.NISN);
+          b.set(docRef, s, { merge: true });
+        });
       });
 
-      // Jadwal
       jadwal.forEach(j => {
-        const docRef = doc(db, 'jadwal', j.ID_Jadwal);
-        batch.set(docRef, j, { merge: true });
-        count++;
+        operations.push(b => {
+          const docRef = doc(db, 'jadwal', j.ID_Jadwal);
+          b.set(docRef, j, { merge: true });
+        });
       });
 
-      // Agenda
       agenda.forEach(a => {
-        const docRef = doc(db, 'agenda', a.ID_Agenda);
-        batch.set(docRef, a, { merge: true });
-        count++;
+        operations.push(b => {
+          const docRef = doc(db, 'agenda', a.ID_Agenda);
+          b.set(docRef, a, { merge: true });
+        });
       });
 
-      // Penilaian
       penilaian.forEach(p => {
-        const docRef = doc(db, 'penilaian', p.ID_Nilai);
-        batch.set(docRef, p, { merge: true });
-        count++;
+        operations.push(b => {
+          const docRef = doc(db, 'penilaian', p.ID_Nilai);
+          b.set(docRef, p, { merge: true });
+        });
       });
 
-      // Kop Surat Settings
-      if (kopSurat) {
-        const kopRef = doc(db, 'settings', 'kop_surat');
-        batch.set(kopRef, kopSurat, { merge: true });
-        count++;
+      if (kopSurat && kopSurat.namaSekolah) {
+        operations.push(b => {
+          const kopRef = doc(db, 'settings', 'kop_surat');
+          b.set(kopRef, kopSurat, { merge: true });
+        });
       }
 
-      await batch.commit();
+      // Execute in chunks of 400 to prevent Firestore's 500 limit
+      const chunkSize = 400;
+      for (let i = 0; i < operations.length; i += chunkSize) {
+        const chunk = operations.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(op => op(batch));
+        await batch.commit();
+      }
 
       const now = new Date().toISOString();
       StorageService.setLastSyncTimestamp(now);
 
       return {
         success: true,
-        count,
-        message: `Berhasil mengunggah ${count} data lokal ke Cloud Firestore.`
+        count: operations.length,
+        message: `Berhasil mengunggah ${operations.length} data lokal ke Cloud Firestore.`
       };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal sinkronisasi ke Firestore';
@@ -85,7 +94,7 @@ export const FirestoreService = {
     }
   },
 
-  // Pull all data from Cloud Firestore into local storage
+  // Pull all data from Cloud Firestore with intelligent safe merge
   async pullAllFromFirestore(): Promise<{ 
     success: boolean; 
     message: string;
@@ -94,63 +103,91 @@ export const FirestoreService = {
     try {
       const counts = { users: 0, siswa: 0, jadwal: 0, agenda: 0, penilaian: 0 };
 
-      // Users
+      // Users - Merge by ID_User / NIP_Username
       const usersSnap = await getDocs(collection(db, 'users'));
-      const usersList: User[] = [];
-      usersSnap.forEach(d => usersList.push(d.data() as User));
-      if (usersList.length > 0) {
-        StorageService.saveUsers(usersList);
-        counts.users = usersList.length;
+      const cloudUsers: User[] = [];
+      usersSnap.forEach(d => cloudUsers.push(d.data() as User));
+      if (cloudUsers.length > 0) {
+        const localUsers = StorageService.getUsers();
+        const userMap = new Map<string, User>();
+        localUsers.forEach(u => userMap.set(u.ID_User || u.NIP_Username, u));
+        cloudUsers.forEach(u => userMap.set(u.ID_User || u.NIP_Username, u));
+        const mergedUsers = Array.from(userMap.values());
+        StorageService.saveUsers(mergedUsers);
+        counts.users = mergedUsers.length;
       }
 
-      // Siswa
+      // Siswa - Merge by NISN (preserves local additions, takes latest cloud)
       const siswaSnap = await getDocs(collection(db, 'siswa'));
-      const siswaList: Siswa[] = [];
-      siswaSnap.forEach(d => siswaList.push(d.data() as Siswa));
-      if (siswaList.length > 0) {
-        // Sort by Kelas then Nama_Siswa
-        siswaList.sort((a, b) => a.Kelas.localeCompare(b.Kelas) || a.Nama_Siswa.localeCompare(b.Nama_Siswa));
-        StorageService.saveSiswa(siswaList);
-        counts.siswa = siswaList.length;
+      const cloudSiswa: Siswa[] = [];
+      siswaSnap.forEach(d => cloudSiswa.push(d.data() as Siswa));
+      if (cloudSiswa.length > 0) {
+        const localSiswa = StorageService.getSiswa();
+        const siswaMap = new Map<string, Siswa>();
+        localSiswa.forEach(s => siswaMap.set(s.NISN, s));
+        cloudSiswa.forEach(s => siswaMap.set(s.NISN, s));
+        const mergedSiswa = Array.from(siswaMap.values()).sort(
+          (a, b) => a.Kelas.localeCompare(b.Kelas) || a.Nama_Siswa.localeCompare(b.Nama_Siswa)
+        );
+        StorageService.saveSiswa(mergedSiswa);
+        counts.siswa = mergedSiswa.length;
       }
 
-      // Jadwal
+      // Jadwal - Merge by ID_Jadwal
       const jadwalSnap = await getDocs(collection(db, 'jadwal'));
-      const jadwalList: Jadwal[] = [];
-      jadwalSnap.forEach(d => jadwalList.push(d.data() as Jadwal));
-      if (jadwalList.length > 0) {
-        StorageService.saveJadwal(jadwalList);
-        counts.jadwal = jadwalList.length;
+      const cloudJadwal: Jadwal[] = [];
+      jadwalSnap.forEach(d => cloudJadwal.push(d.data() as Jadwal));
+      if (cloudJadwal.length > 0) {
+        const localJadwal = StorageService.getJadwal();
+        const jadwalMap = new Map<string, Jadwal>();
+        localJadwal.forEach(j => jadwalMap.set(j.ID_Jadwal, j));
+        cloudJadwal.forEach(j => jadwalMap.set(j.ID_Jadwal, j));
+        const mergedJadwal = Array.from(jadwalMap.values());
+        StorageService.saveJadwal(mergedJadwal);
+        counts.jadwal = mergedJadwal.length;
       }
 
-      // Agenda
+      // Agenda - Merge by ID_Agenda
       const agendaSnap = await getDocs(collection(db, 'agenda'));
-      const agendaList: Agenda[] = [];
-      agendaSnap.forEach(d => agendaList.push(d.data() as Agenda));
-      if (agendaList.length > 0) {
-        agendaList.sort((a, b) => (b.Tanggal || '').localeCompare(a.Tanggal || '') || (b.CreatedAt || '').localeCompare(a.CreatedAt || ''));
-        StorageService.saveAgenda(agendaList);
-        counts.agenda = agendaList.length;
+      const cloudAgenda: Agenda[] = [];
+      agendaSnap.forEach(d => cloudAgenda.push(d.data() as Agenda));
+      if (cloudAgenda.length > 0) {
+        const localAgenda = StorageService.getAgenda();
+        const agendaMap = new Map<string, Agenda>();
+        localAgenda.forEach(a => agendaMap.set(a.ID_Agenda, a));
+        cloudAgenda.forEach(a => agendaMap.set(a.ID_Agenda, a));
+        const mergedAgenda = Array.from(agendaMap.values()).sort(
+          (a, b) => (b.Tanggal || '').localeCompare(a.Tanggal || '') || (b.CreatedAt || '').localeCompare(a.CreatedAt || '')
+        );
+        StorageService.saveAgenda(mergedAgenda);
+        counts.agenda = mergedAgenda.length;
       }
 
-      // Penilaian
+      // Penilaian - Merge by ID_Nilai
       const penilaianSnap = await getDocs(collection(db, 'penilaian'));
-      const penilaianList: Penilaian[] = [];
-      penilaianSnap.forEach(d => penilaianList.push(d.data() as Penilaian));
-      if (penilaianList.length > 0) {
-        penilaianList.sort((a, b) => (b.CreatedAt || '').localeCompare(a.CreatedAt || ''));
-        StorageService.savePenilaian(penilaianList);
-        counts.penilaian = penilaianList.length;
+      const cloudPenilaian: Penilaian[] = [];
+      penilaianSnap.forEach(d => cloudPenilaian.push(d.data() as Penilaian));
+      if (cloudPenilaian.length > 0) {
+        const localPenilaian = StorageService.getPenilaian();
+        const penilaianMap = new Map<string, Penilaian>();
+        localPenilaian.forEach(p => penilaianMap.set(p.ID_Nilai, p));
+        cloudPenilaian.forEach(p => penilaianMap.set(p.ID_Nilai, p));
+        const mergedPenilaian = Array.from(penilaianMap.values()).sort(
+          (a, b) => (b.CreatedAt || '').localeCompare(a.CreatedAt || '')
+        );
+        StorageService.savePenilaian(mergedPenilaian);
+        counts.penilaian = mergedPenilaian.length;
       }
 
       // Kop Surat Settings
       try {
-        const settingsSnap = await getDocs(collection(db, 'settings'));
-        settingsSnap.forEach(d => {
-          if (d.id === 'kop_surat') {
-            StorageService.saveKopSurat(d.data() as KopSuratConfig);
+        const kopDoc = await getDoc(doc(db, 'settings', 'kop_surat'));
+        if (kopDoc.exists()) {
+          const kopData = kopDoc.data() as KopSuratConfig;
+          if (kopData && kopData.namaSekolah) {
+            StorageService.saveKopSurat(kopData);
           }
-        });
+        }
       } catch (kopErr) {
         console.warn('Failed to pull kop_surat:', kopErr);
       }
@@ -170,15 +207,15 @@ export const FirestoreService = {
     }
   },
 
-  // Two-way synchronization with Firestore (Smart Safe Merge)
+  // Two-way synchronization with Firestore (Smart Safe Merge & Sync)
   async syncBothWithFirestore(): Promise<{ success: boolean; message: string }> {
-    // 1. Pull latest cloud records first into local storage
+    // 1. Pull latest cloud records and safely merge into local storage
     const pullRes = await this.pullAllFromFirestore();
-    // 2. Push any local additions to the cloud
+    // 2. Push all merged records to cloud so cloud has the complete combined set
     await this.pushAllToFirestore();
     return {
       success: true,
-      message: `Sinkronisasi selesai! ${pullRes.message}`
+      message: `Sinkronisasi selesai! ${pullRes.counts.siswa} siswa, ${pullRes.counts.agenda} agenda, ${pullRes.counts.penilaian} penilaian tersinkronisasi di semua perangkat.`
     };
   },
 
@@ -369,7 +406,10 @@ export const FirestoreService = {
   subscribeToKopSurat(onUpdate: (kop: KopSuratConfig) => void): Unsubscribe {
     return onSnapshot(doc(db, 'settings', 'kop_surat'), (snap) => {
       if (snap.exists()) {
-        onUpdate(snap.data() as KopSuratConfig);
+        const data = snap.data() as KopSuratConfig;
+        if (data && data.namaSekolah) {
+          onUpdate(data);
+        }
       }
     }, (err) => {
       console.warn('KopSurat real-time listener error:', err);

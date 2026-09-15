@@ -153,6 +153,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
+
+          {/* Quick Demo Accounts Helper */}
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <div className="text-[11px] font-semibold text-slate-500 mb-2 flex items-center justify-between">
+              <span>Akun Cepat untuk Uji Coba Antar-Device:</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setNip('admin');
+                  setPassword('admin123');
+                }}
+                className="p-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 text-left transition text-slate-700 hover:text-blue-700 hover:border-blue-200 cursor-pointer"
+              >
+                <div className="font-bold">🔑 Admin Sekolah</div>
+                <div className="text-[10px] text-slate-500 font-mono">admin / admin123</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNip('199310112024211028');
+                  setPassword('guru123');
+                }}
+                className="p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-left transition text-slate-700 hover:text-emerald-700 hover:border-emerald-200 cursor-pointer"
+              >
+                <div className="font-bold">👨‍🏫 Adrial Ikhwan (Guru)</div>
+                <div className="text-[10px] text-slate-500 font-mono">19931011... / guru123</div>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Security & Offline Badge */}

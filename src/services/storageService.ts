@@ -322,6 +322,7 @@ export const StorageService = {
   deletePenilaian(id: string): void {
     const list = this.getPenilaian().filter(n => n.ID_Nilai !== id);
     localStorage.setItem(STORAGE_KEYS.PENILAIAN, JSON.stringify(list));
+    FirestoreService.deletePenilaian(id).catch(console.warn);
   },
 
   // Kop Surat Configuration

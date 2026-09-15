@@ -19,7 +19,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { useToast } from './hooks/useToast';
 
 export default function App() {
-  const { showSuccess, showInfo } = useToast();
+  const { showSuccess, showInfo, showError } = useToast();
 
   // Session & Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -144,6 +144,22 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+
+  const handleQuickCloudSync = async () => {
+    setIsCloudSyncing(true);
+    try {
+      const res = await FirestoreService.syncBothWithFirestore();
+      refreshAllData();
+      showSuccess('Cloud Tersinkronisasi', res.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal sinkronisasi cloud';
+      showError('Gagal Sinkronisasi', msg);
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
   // If user is not logged in, show Login Screen
   if (!currentUser) {
     return (
@@ -165,6 +181,8 @@ export default function App() {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         onOpenSync={() => setIsSyncModalOpen(true)}
+        onQuickCloudSync={handleQuickCloudSync}
+        isCloudSyncing={isCloudSyncing}
       />
 
       {/* Main Container */}

@@ -11,13 +11,17 @@ import {
   Database,
   Menu,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 interface TopBarProps {
   user: User;
   onLogout: () => void;
   onOpenSync: () => void;
+  onQuickCloudSync?: () => void;
+  isCloudSyncing?: boolean;
   onToggleSidebar?: () => void;
   onToggleMobileMenu?: () => void;
   searchQuery?: string;
@@ -29,6 +33,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   user,
   onLogout,
   onOpenSync,
+  onQuickCloudSync,
+  isCloudSyncing = false,
   onToggleSidebar,
   onToggleMobileMenu,
   searchQuery = '',
@@ -101,14 +107,28 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Connectivity status pill */}
         <div 
-          className={`hidden md:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+          className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
             isOnline ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
           }`}
-          title={isOnline ? 'Terhubung ke Jaringan' : 'Sedang Bekerja Offline'}
+          title={isOnline ? 'Cloud Firestore Terhubung & Aktif' : 'Sedang Bekerja Offline'}
         >
-          <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
-          <span>{isOnline ? 'Online' : 'Offline'}</span>
+          <Cloud className={`w-3.5 h-3.5 ${isOnline ? 'text-emerald-600' : 'text-amber-600'}`} />
+          <span>{isOnline ? 'Cloud Aktif' : 'Offline'}</span>
         </div>
+
+        {/* Quick Cloud Sync Button */}
+        {onQuickCloudSync && (
+          <button
+            type="button"
+            onClick={onQuickCloudSync}
+            disabled={isCloudSyncing}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Sinkronkan data instan antar-perangkat via Cloud Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-amber-700 shrink-0 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+            <span className="hidden md:inline">{isCloudSyncing ? 'Sinkron...' : 'Sinkron Cloud'}</span>
+          </button>
+        )}
 
         {/* PWA Install Button */}
         <PWAInstallButton />
@@ -117,10 +137,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           onClick={onOpenSync}
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition cursor-pointer shadow-2xs"
-          title="Sinkronisasi Data Google Sheet"
+          title="Buka Pusat Sinkronisasi & Integrasi"
         >
           <Database className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span className="hidden sm:inline">Sinkronisasi</span>
+          <span className="hidden sm:inline">Pusat Sinkron</span>
         </button>
 
         {/* User Card & Logout */}
