@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../../types';
 import { PWAInstallButton } from '../common/PWAInstallButton';
 import { useOnlineStatus } from '../../hooks/usePWAInstall';
-import { 
-  Calendar, 
-  Clock, 
-  Search, 
-  LogOut, 
-  User as UserIcon, 
+import {
+  Calendar,
+  Clock,
+  LogOut,
+  User as UserIcon,
   Database,
   Menu,
   CheckCircle2,
@@ -24,8 +23,6 @@ interface TopBarProps {
   isCloudSyncing?: boolean;
   onToggleSidebar?: () => void;
   onToggleMobileMenu?: () => void;
-  searchQuery?: string;
-  setSearchQuery?: (query: string) => void;
   onOpenProfile?: () => void;
 }
 
@@ -37,8 +34,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   isCloudSyncing = false,
   onToggleSidebar,
   onToggleMobileMenu,
-  searchQuery = '',
-  setSearchQuery,
   onOpenProfile,
 }) => {
   const isOnline = useOnlineStatus();
@@ -51,11 +46,11 @@ export const TopBar: React.FC<TopBarProps> = ({
     const updateTime = () => {
       const now = new Date();
       // Indonesian Date Format
-      const options: Intl.DateTimeFormatOptions = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       };
       setDateStr(now.toLocaleDateString('id-ID', options));
       setTimeStr(
@@ -94,7 +89,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         {/* Desktop: Date & Time Widget */}
-        <div className="hidden sm:flex items-center gap-3 text-xs border-r border-slate-800 pr-4">
+        <div className="hidden sm:flex items-center gap-3 text-xs">
           <div className="flex items-center gap-1.5 font-medium text-slate-200">
             <Calendar className="w-3.5 h-3.5 text-sky-400" />
             <span>{dateStr || 'Memuat...'}</span>
@@ -104,29 +99,16 @@ export const TopBar: React.FC<TopBarProps> = ({
             <span className="text-slate-300">{timeStr}</span>
           </div>
         </div>
-
-        {/* Global Local Search */}
-        <div className="relative hidden md:block w-52 lg:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari kelas, siswa, atau mapel..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery?.(e.target.value)}
-            className="w-full rounded-xl border border-slate-700/70 bg-slate-800/80 py-1.5 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-400 transition focus:border-blue-500 focus:bg-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
       </div>
 
       {/* Right: Connectivity, PWA, Sync & User info */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Connectivity status pill */}
-        <div 
-          className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-            isOnline 
-              ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/30' 
-              : 'bg-rose-950/70 text-rose-300 border border-rose-500/30'
-          }`}
+        <div
+          className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${isOnline
+            ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/30'
+            : 'bg-rose-950/70 text-rose-300 border border-rose-500/30'
+            }`}
           title={isOnline ? 'Cloud Firestore Terhubung & Aktif' : 'Sedang Bekerja Offline'}
         >
           <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />

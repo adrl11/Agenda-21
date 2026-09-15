@@ -3,18 +3,19 @@ import { Siswa } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useToast } from '../../hooks/useToast';
 import { ImportSiswaExcelModal } from './ImportSiswaExcelModal';
-import { 
-  GraduationCap, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  FileDown, 
-  CheckCircle2, 
+import {
+  GraduationCap,
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  FileDown,
+  CheckCircle2,
   RotateCcw,
   UserCheck,
   FileSpreadsheet,
-  ArrowRight
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface MasterSiswaViewProps {
@@ -39,7 +40,7 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterKelas, setFilterKelas] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 12;
+  const [pageSize, setPageSize] = useState<number>(15);
 
   const availableClasses = useMemo(() => {
     const list = Array.from(new Set(siswaList.map((s) => s.Kelas))).sort();
@@ -56,11 +57,36 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
     });
   }, [siswaList, searchQuery, filterKelas]);
 
-  const totalPages = Math.ceil(filteredSiswa.length / pageSize) || 1;
+  const effectivePageSize = pageSize === 0 ? Math.max(filteredSiswa.length, 1) : pageSize;
+  const totalPages = Math.ceil(filteredSiswa.length / effectivePageSize) || 1;
   const paginatedSiswa = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredSiswa.slice(start, start + pageSize);
-  }, [filteredSiswa, currentPage, pageSize]);
+    const start = (currentPage - 1) * effectivePageSize;
+    return filteredSiswa.slice(start, start + effectivePageSize);
+  }, [filteredSiswa, currentPage, effectivePageSize]);
+
+  // Kembali ke Halaman 1 setiap kali total halaman berkurang di bawah halaman aktif
+  React.useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginationRange = useMemo(() => {
+    const delta = 1;
+    const range: (number | 'ellipsis')[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - delta && i <= currentPage + delta)
+      ) {
+        range.push(i);
+      } else if (range[range.length - 1] !== 'ellipsis') {
+        range.push('ellipsis');
+      }
+    }
+    return range;
+  }, [totalPages, currentPage]);
 
   const resetForm = () => {
     setEditingNisn(null);
@@ -167,34 +193,6 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
             <span>Export CSV</span>
           </button>
         </div>
-      </div>
-
-      {/* Excel Quick Info Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50 border border-emerald-200/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
-            <FileSpreadsheet className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-              <span>Pembaruan Data Siswa Massal via Excel</span>
-              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">
-                Fitur Baru
-              </span>
-            </div>
-            <p className="text-slate-600 mt-0.5">
-              Ingin memperbarui kenaikan kelas, mutasi, atau mengunggah data siswa satu sekolah sekaligus? Gunakan fitur import file Excel (.xlsx/.xls/csv) dengan pencocokan otomatis NISN.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsImportModalOpen(true)}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition shrink-0 cursor-pointer shadow-xs active:scale-95"
-        >
-          <span>Buka Import Excel</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
       </div>
 
       {/* Form Input Siswa */}
@@ -377,6 +375,90 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
               ))}
             </tbody>
           </table>
+
+          {paginatedSiswa.length === 0 && (
+            <div className="py-10 text-center text-xs text-slate-400">
+              Tidak ada data siswa yang cocok dengan pencarian/filter.
+            </div>
+          )}
+        </div>
+
+        {/* Panel Navigasi Halaman (Pagination) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 mt-4 border-t border-slate-100">
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>
+              {filteredSiswa.length === 0
+                ? 'Tidak ada data siswa'
+                : `Menampilkan ${(currentPage - 1) * effectivePageSize + 1} – ${Math.min(
+                  currentPage * effectivePageSize,
+                  filteredSiswa.length
+                )} dari Total ${filteredSiswa.length} Siswa`}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="pageSizeSelect" className="text-slate-400">
+                Tampilkan:
+              </label>
+              <select
+                id="pageSizeSelect"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 focus:outline-hidden"
+              >
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={0}>Semua</option>
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </button>
+
+              {paginationRange.map((p, idx) =>
+                p === 'ellipsis' ? (
+                  <span key={`ellipsis-${idx}`} className="px-1.5 text-xs text-slate-400">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setCurrentPage(p)}
+                    className={`min-w-[28px] rounded-lg px-2 py-1.5 text-xs font-semibold transition cursor-pointer ${p === currentPage
+                        ? 'bg-sky-700 text-white shadow-xs'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                <span className="hidden sm:inline">Berikutnya</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
