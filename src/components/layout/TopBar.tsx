@@ -44,6 +44,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   const isOnline = useOnlineStatus();
   const [timeStr, setTimeStr] = useState<string>('');
   const [dateStr, setDateStr] = useState<string>('');
+  const [mobileDayStr, setMobileDayStr] = useState<string>('');
+  const [mobileDateStr, setMobileDateStr] = useState<string>('');
 
   useEffect(() => {
     const updateTime = () => {
@@ -59,6 +61,8 @@ export const TopBar: React.FC<TopBarProps> = ({
       setTimeStr(
         now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB'
       );
+      setMobileDayStr(now.toLocaleDateString('id-ID', { weekday: 'long' }));
+      setMobileDateStr(now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }));
     };
 
     updateTime();
@@ -67,9 +71,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-[#0f172a] px-4 sm:px-6 shadow-sm transition-all">
-      {/* Left: Mobile Menu Toggle & Title */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-[#0f172a] px-3 sm:px-6 shadow-sm transition-all">
+      {/* Left: Mobile Menu Toggle, Date & Search */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onToggleSidebar || onToggleMobileMenu}
           className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition focus:outline-hidden lg:hidden cursor-pointer"
@@ -78,7 +82,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Date & Time Widget */}
+        {/* Mobile: Day & Date Widget */}
+        <div className="flex sm:hidden flex-col justify-center leading-tight">
+          <div className="flex items-center gap-1 text-xs font-bold text-slate-100">
+            <Calendar className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span>{mobileDayStr || 'Hari ini'}</span>
+          </div>
+          <span className="text-[10px] text-slate-400 pl-4.5 font-medium">
+            {mobileDateStr}
+          </span>
+        </div>
+
+        {/* Desktop: Date & Time Widget */}
         <div className="hidden sm:flex items-center gap-3 text-xs border-r border-slate-800 pr-4">
           <div className="flex items-center gap-1.5 font-medium text-slate-200">
             <Calendar className="w-3.5 h-3.5 text-sky-400" />

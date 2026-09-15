@@ -260,7 +260,6 @@ export default function App() {
               penilaianList={penilaianList}
               siswaList={siswaList}
               onRefresh={refreshAllData}
-              onOpenSync={() => setIsSyncModalOpen(true)}
             />
           )}
 
