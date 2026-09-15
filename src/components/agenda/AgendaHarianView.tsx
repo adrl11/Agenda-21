@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Agenda, Siswa, Jadwal, AgendaStatus } from '../../types';
+import { User, Agenda, Siswa, Jadwal, AgendaStatus, KehadiranStatus, PresensiSiswaItem } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useToast } from '../../hooks/useToast';
 import { 
@@ -19,7 +19,11 @@ import {
   Lock,
   RotateCcw,
   Printer,
-  Database
+  Database,
+  Check,
+  UserCheck,
+  UserX,
+  AlertCircle
 } from 'lucide-react';
 
 interface AgendaHarianViewProps {
@@ -65,10 +69,13 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
   const [kelas, setKelas] = useState<string>(availableClasses[0] || '7A');
   const [mataPelajaran, setMataPelajaran] = useState<string>(user.Mata_Pelajaran || 'Informatika');
   const [materiPokok, setMateriPokok] = useState<string>('');
-  const [totalHadir, setTotalHadir] = useState<number>(10);
   const [status, setStatus] = useState<AgendaStatus>('Terlaksana');
   const [catatanRefleksi, setCatatanRefleksi] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Student Attendance State
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, KehadiranStatus>>({});
+  const [studentSearch, setStudentSearch] = useState<string>('');
 
   // Apply prefill data from dashboard quick links if provided
   useEffect(() => {
@@ -79,15 +86,70 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
     }
   }, [prefillData]);
 
-  // Auto-calculate total students in selected class
-  const totalSiswaDiKelas = useMemo(() => {
-    return siswaList.filter((s) => s.Kelas === kelas).length || 10;
+  // Students in currently selected class
+  const currentClassStudents = useMemo(() => {
+    return siswaList
+      .filter((s) => s.Kelas === kelas)
+      .sort((a, b) => a.Nama_Siswa.localeCompare(b.Nama_Siswa));
   }, [siswaList, kelas]);
 
-  // Adjust totalHadir when class changes
+  // Auto-calculate total students in selected class
+  const totalSiswaDiKelas = currentClassStudents.length;
+
+  // Sync attendance map whenever currentClassStudents changes (preserve existing choices)
   useEffect(() => {
-    setTotalHadir(totalSiswaDiKelas);
-  }, [totalSiswaDiKelas]);
+    setAttendanceMap((prev) => {
+      const nextMap: Record<string, KehadiranStatus> = {};
+      currentClassStudents.forEach((s) => {
+        nextMap[s.NISN] = prev[s.NISN] || 'Hadir';
+      });
+      return nextMap;
+    });
+  }, [currentClassStudents]);
+
+  // Filtered students for in-form search
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch.trim()) return currentClassStudents;
+    const q = studentSearch.toLowerCase();
+    return currentClassStudents.filter(
+      (s) => s.Nama_Siswa.toLowerCase().includes(q) || s.NISN.includes(q)
+    );
+  }, [currentClassStudents, studentSearch]);
+
+  // Attendance statistics counter
+  const attendanceCounts = useMemo(() => {
+    let hadir = 0;
+    let sakit = 0;
+    let izin = 0;
+    let alpa = 0;
+
+    currentClassStudents.forEach((s) => {
+      const st = attendanceMap[s.NISN] || 'Hadir';
+      if (st === 'Hadir') hadir++;
+      else if (st === 'Sakit') sakit++;
+      else if (st === 'Izin') izin++;
+      else if (st === 'Alpa') alpa++;
+    });
+
+    return { hadir, sakit, izin, alpa, total: currentClassStudents.length };
+  }, [currentClassStudents, attendanceMap]);
+
+  // Set all students to a specific status
+  const setAllAttendance = (st: KehadiranStatus) => {
+    const nextMap: Record<string, KehadiranStatus> = {};
+    currentClassStudents.forEach((s) => {
+      nextMap[s.NISN] = st;
+    });
+    setAttendanceMap(nextMap);
+  };
+
+  // Change individual student attendance status
+  const handleStudentStatusChange = (nisn: string, st: KehadiranStatus) => {
+    setAttendanceMap((prev) => ({
+      ...prev,
+      [nisn]: st,
+    }));
+  };
 
   // Local Table Filter & Pagination States
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -124,12 +186,20 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
     setEditingId(null);
     setTanggal(todayStr);
     setJamKe('1 - 2');
-    setKelas(availableClasses[0] || '7A');
+    const defaultClass = availableClasses[0] || '7A';
+    setKelas(defaultClass);
     setMataPelajaran(user.Mata_Pelajaran || 'Informatika');
     setMateriPokok('');
-    setTotalHadir(totalSiswaDiKelas);
     setStatus('Terlaksana');
     setCatatanRefleksi('');
+    setStudentSearch('');
+
+    const defaultStudents = siswaList.filter((s) => s.Kelas === defaultClass);
+    const nextMap: Record<string, KehadiranStatus> = {};
+    defaultStudents.forEach((s) => {
+      nextMap[s.NISN] = 'Hadir';
+    });
+    setAttendanceMap(nextMap);
   };
 
   // Populate form for editing
@@ -140,9 +210,24 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
     setKelas(item.Kelas);
     setMataPelajaran(item.Mata_Pelajaran);
     setMateriPokok(item.Materi_Pokok);
-    setTotalHadir(item.Total_Hadir);
     setStatus(item.Status);
-    setCatatanRefleksi(item.Catatan_Refleksi);
+    setCatatanRefleksi(item.Catatan_Refleksi || '');
+    setStudentSearch('');
+
+    // Restore student attendance if present
+    const nextMap: Record<string, KehadiranStatus> = {};
+    if (item.Daftar_Presensi && item.Daftar_Presensi.length > 0) {
+      item.Daftar_Presensi.forEach((p) => {
+        nextMap[p.NISN] = p.Status;
+      });
+    } else {
+      const studs = siswaList.filter((s) => s.Kelas === item.Kelas);
+      studs.forEach((s) => {
+        nextMap[s.NISN] = 'Hadir';
+      });
+    }
+    setAttendanceMap(nextMap);
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showInfo('Mode Edit Aktif', `Mengedit Jurnal ID: ${item.ID_Agenda}`);
   };
@@ -168,6 +253,12 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
 
     try {
       const idAgenda = editingId || `AGD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      const daftarPresensi: PresensiSiswaItem[] = currentClassStudents.map((s) => ({
+        NISN: s.NISN,
+        Nama_Siswa: s.Nama_Siswa,
+        Status: attendanceMap[s.NISN] || 'Hadir',
+      }));
+
       const newAgenda: Agenda = {
         ID_Agenda: idAgenda,
         NIP_Guru: editingId
@@ -178,8 +269,12 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
         Kelas: kelas,
         Mata_Pelajaran: mataPelajaran,
         Materi_Pokok: materiPokok.trim(),
-        Total_Hadir: Number(totalHadir),
-        Total_Siswa: totalSiswaDiKelas,
+        Total_Hadir: attendanceCounts.hadir,
+        Total_Siswa: currentClassStudents.length || totalSiswaDiKelas,
+        Sakit: attendanceCounts.sakit,
+        Izin: attendanceCounts.izin,
+        Alpa: attendanceCounts.alpa,
+        Daftar_Presensi: daftarPresensi,
         Status: status,
         Catatan_Refleksi: catatanRefleksi.trim(),
         CreatedAt: new Date().toISOString(),
@@ -326,11 +421,11 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Materi Pokok & Presensi Kehadiran */}
+          {/* Row 2: Materi Pokok & Status Pelaksanaan */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Materi Pokok / Capaian Pembelajaran (CP / TP)
+                Materi Pokok / Capaian Pembelajaran (CP / TP) *
               </label>
               <textarea
                 required
@@ -342,59 +437,29 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Presensi Siswa ({totalHadir} / {totalSiswaDiKelas} Hadir)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setTotalHadir(totalSiswaDiKelas)}
-                  className="text-[10px] font-semibold text-blue-700 hover:text-blue-800 underline"
-                >
-                  Hadir Semua
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  max={totalSiswaDiKelas}
-                  value={totalHadir}
-                  onChange={(e) => setTotalHadir(Number(e.target.value))}
-                  className="w-24 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-900 transition focus:border-blue-600 focus:bg-white focus:outline-hidden"
-                />
-                <span className="text-xs text-slate-500">dari {totalSiswaDiKelas} Siswa</span>
-                <span className="ml-auto text-xs font-bold text-emerald-700 px-2 py-1 rounded-md bg-emerald-50 border border-emerald-100">
-                  {Math.round((totalHadir / (totalSiswaDiKelas || 1)) * 100)}%
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Status Pelaksanaan
-                </label>
-                <div className="flex gap-2">
-                  {(['Terlaksana', 'Diganti', 'Tugas Mandiri'] as AgendaStatus[]).map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setStatus(st)}
-                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                        status === st
-                          ? st === 'Terlaksana'
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : st === 'Diganti'
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Status Pelaksanaan Pembelajaran
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                {(['Terlaksana', 'Diganti', 'Tugas Mandiri'] as AgendaStatus[]).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setStatus(st)}
+                    className={`py-2 px-1 text-center rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+                      status === st
+                        ? st === 'Terlaksana'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : st === 'Diganti'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -402,15 +467,190 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
           {/* Row 3: Catatan Refleksi Pembelajaran */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Catatan Refleksi Guru / Kendala Pembelajaran / Keterangan
+              Catatan Refleksi Guru / Kendala Pembelajaran / Keterangan Tambahan
             </label>
             <input
               type="text"
               value={catatanRefleksi}
               onChange={(e) => setCatatanRefleksi(e.target.value)}
-              placeholder="Contoh: Pembelajaran berjalan tertib. 1 siswa izin (Ihsan). Perlu pengulangan materi logika minggu depan."
+              placeholder="Contoh: Pembelajaran berjalan tertib. Siswa aktif berdiskusi. Perlu pengulangan materi logika minggu depan."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 transition focus:border-blue-600 focus:bg-white focus:outline-hidden"
             />
+          </div>
+
+          {/* Row 4: Daftar Siswa & Presensi Kehadiran Interaktif */}
+          <div className="rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-slate-50/70 p-4 space-y-3">
+            {/* Presensi Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-100/70">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>Presensi Kehadiran Siswa Kelas {kelas}</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      ({currentClassStudents.length} Siswa)
+                    </span>
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    Pilih status kehadiran setiap siswa: Hadir (H), Sakit (S), Izin (I), atau Alpa (A).
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary Badges & Quick Action */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                  H: {attendanceCounts.hadir}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-bold">
+                  S: {attendanceCounts.sakit}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100 text-blue-800 text-[11px] font-bold">
+                  I: {attendanceCounts.izin}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-100 text-rose-800 text-[11px] font-bold">
+                  A: {attendanceCounts.alpa}
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-200/80 text-slate-700 text-[11px] font-bold ml-1">
+                  {Math.round((attendanceCounts.hadir / (currentClassStudents.length || 1)) * 100)}%
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setAllAttendance('Hadir')}
+                  className="inline-flex items-center gap-1 ml-2 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                  title="Tandai semua siswa di kelas ini hadir"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Semua Hadir</span>
+                </button>
+              </div>
+            </div>
+
+            {/* In-form Mini Search if students exist */}
+            {currentClassStudents.length > 5 && (
+              <div className="relative max-w-xs">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau NISN siswa..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white py-1 pl-7 pr-2.5 text-[11px] text-slate-800 focus:border-blue-600 focus:outline-hidden"
+                />
+              </div>
+            )}
+
+            {/* Student List Container */}
+            {currentClassStudents.length === 0 ? (
+              <div className="p-4 rounded-xl border border-dashed border-slate-200 bg-white text-center">
+                <AlertCircle className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                <p className="text-xs font-semibold text-slate-700">
+                  Belum ada data siswa untuk Kelas {kelas} di Master Siswa.
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Tambahkan siswa melalui menu <strong>Master Siswa</strong> agar daftar presensi otomatis terisi.
+                </p>
+              </div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="p-3 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
+                Tidak ada siswa yang cocok dengan pencarian "{studentSearch}".
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                {filteredStudents.map((siswa, idx) => {
+                  const currentStatus = attendanceMap[siswa.NISN] || 'Hadir';
+
+                  return (
+                    <div
+                      key={siswa.NISN}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 gap-2 hover:bg-slate-50/70 transition"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-[11px] font-mono text-slate-400 w-5 text-right">
+                          {idx + 1}.
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-800 truncate">
+                              {siswa.Nama_Siswa}
+                            </span>
+                            {siswa.Jenis_Kelamin && (
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                  siswa.Jenis_Kelamin === 'L'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-rose-100 text-rose-700'
+                                }`}
+                              >
+                                {siswa.Jenis_Kelamin}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-400">
+                            NISN: {siswa.NISN}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pill buttons for H, S, I, A */}
+                      <div className="flex items-center gap-1 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleStudentStatusChange(siswa.NISN, 'Hadir')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                            currentStatus === 'Hadir'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
+                          }`}
+                          title="Hadir"
+                        >
+                          H
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStudentStatusChange(siswa.NISN, 'Sakit')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                            currentStatus === 'Sakit'
+                              ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700'
+                          }`}
+                          title="Sakit"
+                        >
+                          S
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStudentStatusChange(siswa.NISN, 'Izin')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                            currentStatus === 'Izin'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700'
+                          }`}
+                          title="Izin"
+                        >
+                          I
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStudentStatusChange(siswa.NISN, 'Alpa')}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                            currentStatus === 'Alpa'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-700'
+                          }`}
+                          title="Alpa / Tanpa Keterangan"
+                        >
+                          A
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Submit Actions with LockService simulation */}
@@ -563,6 +803,25 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
                         <div className="text-[10px] text-emerald-600 font-semibold">
                           {Math.round((item.Total_Hadir / (item.Total_Siswa || 1)) * 100)}%
                         </div>
+                        {(Boolean(item.Sakit) || Boolean(item.Izin) || Boolean(item.Alpa)) && (
+                          <div className="flex items-center justify-center gap-1 mt-1 text-[9px] font-bold">
+                            {Boolean(item.Sakit) && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800" title={`Sakit: ${item.Sakit}`}>
+                                S: {item.Sakit}
+                              </span>
+                            )}
+                            {Boolean(item.Izin) && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800" title={`Izin: ${item.Izin}`}>
+                                I: {item.Izin}
+                              </span>
+                            )}
+                            {Boolean(item.Alpa) && (
+                              <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800" title={`Alpa: ${item.Alpa}`}>
+                                A: {item.Alpa}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         <span
@@ -635,9 +894,18 @@ export const AgendaHarianView: React.FC<AgendaHarianViewProps> = ({
                     <span>
                       {item.Tanggal} • Jam {item.Jam_Ke}
                     </span>
-                    <span>
-                      Hadir: <strong>{item.Total_Hadir}/{item.Total_Siswa}</strong>
-                    </span>
+                    <div className="text-right">
+                      <div>
+                        Hadir: <strong>{item.Total_Hadir}/{item.Total_Siswa}</strong>
+                      </div>
+                      {(Boolean(item.Sakit) || Boolean(item.Izin) || Boolean(item.Alpa)) && (
+                        <div className="text-[10px] space-x-1 font-semibold text-slate-500">
+                          {Boolean(item.Sakit) && <span className="text-amber-700">S:{item.Sakit}</span>}
+                          {Boolean(item.Izin) && <span className="text-blue-700">I:{item.Izin}</span>}
+                          {Boolean(item.Alpa) && <span className="text-rose-700">A:{item.Alpa}</span>}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">

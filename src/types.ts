@@ -49,6 +49,15 @@ export interface Jadwal {
 
 export type AgendaStatus = 'Terlaksana' | 'Diganti' | 'Tugas Mandiri';
 
+export type KehadiranStatus = 'Hadir' | 'Sakit' | 'Izin' | 'Alpa';
+
+export interface PresensiSiswaItem {
+  NISN: string;
+  Nama_Siswa: string;
+  Status: KehadiranStatus;
+  Catatan?: string;
+}
+
 export interface Agenda {
   ID_Agenda: string;
   NIP_Guru: string;
@@ -59,6 +68,10 @@ export interface Agenda {
   Materi_Pokok: string;
   Total_Hadir: number;
   Total_Siswa: number;
+  Sakit?: number;
+  Izin?: number;
+  Alpa?: number;
+  Daftar_Presensi?: PresensiSiswaItem[];
   Status: AgendaStatus;
   Catatan_Refleksi: string;
   CreatedAt?: string;

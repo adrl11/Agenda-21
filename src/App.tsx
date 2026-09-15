@@ -293,6 +293,7 @@ export default function App() {
             <MasterJadwalView
               jadwalList={jadwalList}
               usersList={usersList}
+              siswaList={siswaList}
               onRefresh={refreshAllData}
             />
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Jadwal, User, Hari } from '../../types';
+import { Jadwal, User, Hari, Siswa } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useToast } from '../../hooks/useToast';
 import { 
@@ -17,6 +17,7 @@ import {
 interface MasterJadwalViewProps {
   jadwalList: Jadwal[];
   usersList: User[];
+  siswaList: Siswa[];
   onRefresh: () => void;
 }
 
@@ -25,16 +26,25 @@ const HARI_OPTIONS: Hari[] = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabt
 export const MasterJadwalView: React.FC<MasterJadwalViewProps> = ({
   jadwalList,
   usersList,
+  siswaList,
   onRefresh,
 }) => {
   const { showSuccess, showError, showInfo } = useToast();
 
   const teachers = useMemo(() => usersList.filter((u) => u.Role === 'Guru'), [usersList]);
 
+  // Extract unique classes from Master Siswa, with fallback if none yet
+  const availableClasses = useMemo(() => {
+    const fromSiswa = Array.from(new Set(siswaList.map((s) => s.Kelas).filter(Boolean))).sort();
+    if (fromSiswa.length > 0) return fromSiswa;
+    const fromJadwal = Array.from(new Set(jadwalList.map((j) => j.Kelas).filter(Boolean))).sort();
+    return fromJadwal.length > 0 ? fromJadwal : ['7A', '7B', '8A', '8B', '9A', '9B'];
+  }, [siswaList, jadwalList]);
+
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nipGuru, setNipGuru] = useState<string>(teachers[0]?.NIP_Username || '');
-  const [kelas, setKelas] = useState<string>('7A');
+  const [kelas, setKelas] = useState<string>(() => availableClasses[0] || '7A');
   const [mapel, setMapel] = useState<string>('Informatika');
   const [hari, setHari] = useState<Hari>('Senin');
   const [jamMulai, setJamMulai] = useState<string>('07:30');
@@ -69,7 +79,7 @@ export const MasterJadwalView: React.FC<MasterJadwalViewProps> = ({
   const resetForm = () => {
     setEditingId(null);
     setNipGuru(teachers[0]?.NIP_Username || '');
-    setKelas('7A');
+    setKelas(availableClasses[0] || '7A');
     setMapel('Informatika');
     setHari('Senin');
     setJamMulai('07:30');
@@ -216,17 +226,26 @@ export const MasterJadwalView: React.FC<MasterJadwalViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Rombel / Kelas *
-              </label>
-              <input
-                type="text"
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Rombel / Kelas *
+                </label>
+                <span className="text-[10px] text-amber-700 font-medium">
+                  {availableClasses.length} kelas terdaftar
+                </span>
+              </div>
+              <select
                 required
                 value={kelas}
                 onChange={(e) => setKelas(e.target.value)}
-                placeholder="Contoh: 7A, 8B"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-amber-900 focus:border-amber-600 focus:bg-white focus:outline-hidden"
-              />
+              >
+                {availableClasses.map((k) => (
+                  <option key={k} value={k}>
+                    Kelas {k}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
