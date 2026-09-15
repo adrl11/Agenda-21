@@ -126,22 +126,12 @@ export const TopBar: React.FC<TopBarProps> = ({
             title="Sinkronkan data instan antar-perangkat via Cloud Firestore"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-amber-700 shrink-0 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-            <span className="hidden md:inline">{isCloudSyncing ? 'Sinkron...' : 'Sinkron Cloud'}</span>
+            <span className="hidden sm:inline">{isCloudSyncing ? 'Sinkron...' : 'Sinkron Cloud'}</span>
           </button>
         )}
 
         {/* PWA Install Button */}
         <PWAInstallButton />
-
-        {/* Google Sheet Sync Button (Untuk Guru dan Admin) */}
-        <button
-          onClick={onOpenSync}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition cursor-pointer shadow-2xs"
-          title="Buka Pusat Sinkronisasi & Integrasi"
-        >
-          <Database className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span className="hidden sm:inline">Pusat Sinkron</span>
-        </button>
 
         {/* User Card & Logout */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-200">

@@ -117,12 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: FileText,
           category: 'Laporan',
         },
-        {
-          id: 'integrasi-sheet' as ActiveTab,
-          label: 'Sinkronisasi Data Cloud',
-          icon: Database,
-          category: 'Sistem',
-        },
       ];
 
   const handleSelect = (tab: ActiveTab) => {
